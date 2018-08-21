@@ -9,7 +9,7 @@ using Xunit;
 
 namespace EFCore.TransactionExtensions.InMemory.Tests
 {
-    public class SimpleTests
+    public class InMemoryDbContextTransactionScopeTests
     {
         protected IDbContextTransactionScope<StoreContext> CreateDbContextScope([CallerMemberName] string caller = null)
         {
@@ -34,15 +34,15 @@ namespace EFCore.TransactionExtensions.InMemory.Tests
                     using (var db1 = scope.CreateDbContext())
                     using (var db2 = scope.CreateDbContext())
                     {
-                        db1.Products.Add(new Product {Code = "P1", Name = "Product 1"});
-                        db2.Products.Add(new Product {Code = "P2", Name = "Product 2"});
+                        db1.Customers.Add(new Customer {CustomerCode = "P1", Name = "Product 1"});
+                        db2.Customers.Add(new Customer {CustomerCode = "P2", Name = "Product 2"});
                         db1.SaveChanges();
                         db2.SaveChanges();
                     }
 
                     using (var db = scope.CreateDbContext())
                     {
-                        db.Products.Should().HaveCount(2,
+                        db.Customers.Should().HaveCount(2,
                             "DbContext created in the same scope must run in the same transaction");
                     }
 
@@ -73,15 +73,15 @@ namespace EFCore.TransactionExtensions.InMemory.Tests
                 using (var db1 = scope.CreateDbContext())
                 using (var db2 = scope.CreateDbContext())
                 {
-                    db1.Products.Add(new Product {Code = "P1", Name = "Product 1"});
-                    db2.Products.Add(new Product {Code = "P2", Name = "Product 2"});
+                    db1.Customers.Add(new Customer {CustomerCode = "P1", Name = "Product 1"});
+                    db2.Customers.Add(new Customer {CustomerCode = "P2", Name = "Product 2"});
                     db1.SaveChanges();
                     db2.SaveChanges();
                 }
 
                 using (var db = scope.CreateDbContext())
                 {
-                    db.Products.Should().HaveCount(2,
+                    db.Customers.Should().HaveCount(2,
                         "DbContext created in the same scope must run in the same transaction");
                 }
             }

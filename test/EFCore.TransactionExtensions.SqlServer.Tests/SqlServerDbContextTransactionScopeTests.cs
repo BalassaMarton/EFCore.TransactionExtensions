@@ -12,7 +12,7 @@ using Xunit;
 
 namespace EFCore.TransactionExtensions.SqlServer.Tests
 {
-    public class SimpleTests : IDisposable
+    public class SqlServerDbContextTransactionScopeTests : IDisposable
     {
         [Fact]
         public void Single_transaction_completes()
@@ -62,7 +62,13 @@ namespace EFCore.TransactionExtensions.SqlServer.Tests
             await RelationalTests.Ambient_TransactionScope_without_complete_async(CreateScope, CreateStoreContext);
         }
 
-        public SimpleTests()
+        [Fact]
+        public async Task Parallel_queries()
+        {
+            await RelationalTests.Parallel_queries(CreateScope, CreateStoreContext);
+        }
+
+        public SqlServerDbContextTransactionScopeTests()
         {
             var dbName = "Test-" + Guid.NewGuid().ToString("N");
             _connectionString =

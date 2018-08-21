@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace EFCore.TransactionExtensions.Tests.Model
+namespace ConsoleApp.Models
 {
     public class Customer
     {
