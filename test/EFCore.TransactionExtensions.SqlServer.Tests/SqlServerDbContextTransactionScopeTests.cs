@@ -72,7 +72,7 @@ namespace EFCore.TransactionExtensions.SqlServer.Tests
         {
             var dbName = "Test-" + Guid.NewGuid().ToString("N");
             _connectionString =
-                $@"Server=localhost\SQLEXPRESS;Database={dbName};Trusted_Connection=True;MultipleActiveResultSets=true";
+                $@"Server=localhost;Database={dbName};Trusted_Connection=True;MultipleActiveResultSets=true";
             using (var db = CreateStoreContext())
             {
                 db.Database.EnsureCreated();
@@ -89,9 +89,9 @@ namespace EFCore.TransactionExtensions.SqlServer.Tests
 
         private readonly string _connectionString;
 
-        private IDbContextTransactionScope<StoreContext> CreateScope()
+        private IDbContextTransactionScope CreateScope()
         {
-            return new SqlServerDbContextTransactionScope<StoreContext>(_connectionString);
+            return new SqlServerDbContextTransactionScope(_connectionString);
         }
 
         private StoreContext CreateStoreContext()

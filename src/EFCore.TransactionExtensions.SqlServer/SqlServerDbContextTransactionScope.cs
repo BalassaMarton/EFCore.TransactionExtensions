@@ -8,13 +8,12 @@ using IsolationLevel = System.Data.IsolationLevel;
 
 namespace EFCore.TransactionExtensions.SqlServer
 {
-    public class SqlServerDbContextTransactionScope<TContext> : IDbContextTransactionScope<TContext>,
-        IRelationalDbContextTransactionScope<TContext> where TContext : DbContext
+    public class SqlServerDbContextTransactionScope : IDbContextTransactionScope, IRelationalDbContextTransactionScope
     {
         private readonly bool _ownsConnection;
-        private SqlConnection _connection;
+        private readonly SqlConnection _connection;
+        private readonly Action<DbContextOptionsBuilder> _optionsBuilderAction;
         private bool _disposed;
-        private DbContextOptions<TContext> _options;
 
         public SqlServerDbContextTransactionScope(string connectionString) : this(connectionString,
             IsolationLevel.Unspecified, null, null)
@@ -22,8 +21,8 @@ namespace EFCore.TransactionExtensions.SqlServer
         }
 
         public SqlServerDbContextTransactionScope(string connectionString,
-            Action<DbContextOptionsBuilder<TContext>> configure) : this(connectionString, IsolationLevel.Unspecified,
-            null, configure)
+            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connectionString, IsolationLevel.Unspecified,
+            null, optionsBuilderAction)
         {
         }
 
@@ -33,8 +32,8 @@ namespace EFCore.TransactionExtensions.SqlServer
         }
 
         public SqlServerDbContextTransactionScope(string connectionString, IsolationLevel isolationLevel,
-            Action<DbContextOptionsBuilder<TContext>> configure) : this(connectionString, isolationLevel, null,
-            configure)
+            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connectionString, isolationLevel, null,
+            optionsBuilderAction)
         {
         }
 
@@ -44,9 +43,9 @@ namespace EFCore.TransactionExtensions.SqlServer
         }
 
         public SqlServerDbContextTransactionScope(string connectionString, string transactionName,
-            Action<DbContextOptionsBuilder<TContext>> configure) : this(connectionString, IsolationLevel.Unspecified,
+            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connectionString, IsolationLevel.Unspecified,
             transactionName,
-            configure)
+            optionsBuilderAction)
         {
         }
 
@@ -56,14 +55,15 @@ namespace EFCore.TransactionExtensions.SqlServer
         }
 
         public SqlServerDbContextTransactionScope(string connectionString, IsolationLevel isolationLevel,
-            string transactionName, Action<DbContextOptionsBuilder<TContext>> configure)
+            string transactionName, Action<DbContextOptionsBuilder> optionsBuilderAction) : this(CreateConnection(connectionString), true, isolationLevel, transactionName, optionsBuilderAction)
         {
-            if (connectionString == null)
-                throw new ArgumentNullException(nameof(connectionString));
+        }
+
+        private static SqlConnection CreateConnection(string connectionString)
+        {
             var connection = new SqlConnection(connectionString);
-            _ownsConnection = true;
             connection.Open();
-            Initialize(connection, isolationLevel, transactionName, configure);
+            return connection;
         }
 
         public SqlServerDbContextTransactionScope(SqlConnection connection) : this(connection,
@@ -72,8 +72,8 @@ namespace EFCore.TransactionExtensions.SqlServer
         }
 
         public SqlServerDbContextTransactionScope(SqlConnection connection,
-            Action<DbContextOptionsBuilder<TContext>> configure) : this(connection, IsolationLevel.Unspecified, null,
-            configure)
+            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connection, IsolationLevel.Unspecified, null,
+            optionsBuilderAction)
         {
         }
 
@@ -83,7 +83,7 @@ namespace EFCore.TransactionExtensions.SqlServer
         }
 
         public SqlServerDbContextTransactionScope(SqlConnection connection, IsolationLevel isolationLevel,
-            Action<DbContextOptionsBuilder<TContext>> configure) : this(connection, isolationLevel, null, configure)
+            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connection, isolationLevel, null, optionsBuilderAction)
         {
         }
 
@@ -98,25 +98,35 @@ namespace EFCore.TransactionExtensions.SqlServer
         }
 
         public SqlServerDbContextTransactionScope(SqlConnection connection, string transactionName,
-            Action<DbContextOptionsBuilder<TContext>> configure) : this(connection, IsolationLevel.Unspecified,
-            transactionName, configure)
+            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connection, IsolationLevel.Unspecified,
+            transactionName, optionsBuilderAction)
         {
         }
 
         public SqlServerDbContextTransactionScope(SqlConnection connection, IsolationLevel isolationLevel,
-            string transactionName, Action<DbContextOptionsBuilder<TContext>> configure)
+            string transactionName, Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connection, false,
+            isolationLevel, transactionName, optionsBuilderAction)
         {
-            Initialize(connection ?? throw new ArgumentNullException(nameof(connection)), isolationLevel,
-                transactionName, configure);
+        }
+
+        protected SqlServerDbContextTransactionScope(SqlConnection connection, bool ownsConnection, IsolationLevel isolationLevel, string transactionName,
+            Action<DbContextOptionsBuilder> optionsBuilderAction)
+        {
+            _connection = connection;
+            _ownsConnection = ownsConnection;
+            _optionsBuilderAction = optionsBuilderAction;
+            // Detect ambient transaction - in this case we let SqlClient handle transactions
+            if (Transaction.Current == null)
+                DbTransaction = _connection.BeginTransaction(isolationLevel, transactionName);
         }
 
         public DbConnection DbConnection => _connection;
         public DbTransaction DbTransaction { get; private set; }
 
-        public TContext CreateDbContext()
+        public TContext CreateDbContext<TContext>() where TContext : DbContext
         {
             ThrowIfDisposed();
-            var context = (TContext) Activator.CreateInstance(typeof(TContext), _options);
+            var context = (TContext) Activator.CreateInstance(typeof(TContext), CreateOptions<TContext>());
             if (DbTransaction != null)
                 context.Database.UseTransaction(DbTransaction);
             return context;
@@ -144,17 +154,12 @@ namespace EFCore.TransactionExtensions.SqlServer
             return DbTransaction;
         }
 
-        private void Initialize(SqlConnection connection, IsolationLevel isolationLevel, string transactionName,
-            Action<DbContextOptionsBuilder<TContext>> configure)
+        private DbContextOptions<TContext> CreateOptions<TContext>() where TContext : DbContext
         {
-            _connection = connection;
             var builder = new DbContextOptionsBuilder<TContext>();
             builder.UseSqlServer(_connection);
-            configure?.Invoke(builder);
-            _options = builder.Options;
-            // Detect ambient transaction - in this case we let SqlClient handle transactions
-            if (Transaction.Current == null)
-                DbTransaction = _connection.BeginTransaction(isolationLevel, transactionName);
+            _optionsBuilderAction?.Invoke(builder);
+            return builder.Options;
         }
 
         protected void ThrowIfDisposed()
@@ -173,7 +178,6 @@ namespace EFCore.TransactionExtensions.SqlServer
                 DbTransaction?.Dispose();
                 if (_ownsConnection)
                     _connection.Dispose();
-                _options = null;
             }
         }
     }

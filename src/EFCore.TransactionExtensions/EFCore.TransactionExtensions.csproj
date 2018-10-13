@@ -2,10 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>Provider agnostic transaction sharing for Entity Framework Core</Description>
+    <PackageProjectUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions</RepositoryUrl>
+    <PackageTags>efcore entityframeworkcore transaction</PackageTags>
+    <PackageLicenseUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions/LICENSE</PackageLicenseUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.0" />
   </ItemGroup>
 
 </Project>

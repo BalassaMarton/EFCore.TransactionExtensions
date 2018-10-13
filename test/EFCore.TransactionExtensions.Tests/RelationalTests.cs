@@ -12,13 +12,13 @@ namespace EFCore.TransactionExtensions.Tests
 {
     public static class RelationalTests
     {
-        public static void Single_transaction_completes(Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+        public static void Single_transaction_completes(Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             using (var scope = scopeFactory())
             {
-                using (var db1 = scope.CreateDbContext())
-                using (var db2 = scope.CreateDbContext())
+                using (var db1 = scope.CreateDbContext<StoreContext>())
+                using (var db2 = scope.CreateDbContext<StoreContext>())
                 {
                     db1.Customers.Add(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                     db2.Customers.Add(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -26,7 +26,7 @@ namespace EFCore.TransactionExtensions.Tests
                     db2.SaveChanges();
                 }
 
-                using (var db = scope.CreateDbContext())
+                using (var db = scope.CreateDbContext<StoreContext>())
                 {
                     db.Customers.Should().HaveCount(2,
                         "DbContext created in the same scope must run in the same transaction");
@@ -46,13 +46,13 @@ namespace EFCore.TransactionExtensions.Tests
             }
         }
 
-        public static void Single_transaction_without_complete(Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+        public static void Single_transaction_without_complete(Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             using (var scope = scopeFactory())
             {
-                using (var db1 = scope.CreateDbContext())
-                using (var db2 = scope.CreateDbContext())
+                using (var db1 = scope.CreateDbContext<StoreContext>())
+                using (var db2 = scope.CreateDbContext<StoreContext>())
                 {
                     db1.Customers.Add(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                     db2.Customers.Add(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -60,7 +60,7 @@ namespace EFCore.TransactionExtensions.Tests
                     db2.SaveChanges();
                 }
 
-                using (var db = scope.CreateDbContext())
+                using (var db = scope.CreateDbContext<StoreContext>())
                 {
                     db.Customers.Should().HaveCount(2,
                         "DbContext created in the same scope must run in the same transaction");
@@ -73,14 +73,14 @@ namespace EFCore.TransactionExtensions.Tests
         }
 
         public static async Task Single_transaction_completes_async(
-            Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+            Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             using (var scope = scopeFactory())
             {
                 await Task.Factory.StartNew(() =>
                 {
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         Thread.Sleep(10);
                         db.Customers.Add(new Customer {CustomerCode = "C3", Name = "Customer 3"});
@@ -88,8 +88,8 @@ namespace EFCore.TransactionExtensions.Tests
                     }
                 });
 
-                using (var db1 = scope.CreateDbContext())
-                using (var db2 = scope.CreateDbContext())
+                using (var db1 = scope.CreateDbContext<StoreContext>())
+                using (var db2 = scope.CreateDbContext<StoreContext>())
                 {
                     await db1.Customers.AddAsync(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                     await db2.Customers.AddAsync(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -97,7 +97,7 @@ namespace EFCore.TransactionExtensions.Tests
                     await db2.SaveChangesAsync();
                 }
 
-                using (var db = scope.CreateDbContext())
+                using (var db = scope.CreateDbContext<StoreContext>())
                 {
                     db.Customers.Should().HaveCount(3,
                         "DbContext created in the same scope must run in the same transaction");
@@ -118,14 +118,14 @@ namespace EFCore.TransactionExtensions.Tests
         }
 
         public static async Task Single_transaction_without_complete_async(
-            Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+            Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             using (var scope = scopeFactory())
             {
                 await Task.Factory.StartNew(() =>
                 {
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         Thread.Sleep(10);
                         db.Customers.Add(new Customer {CustomerCode = "C3", Name = "Customer 3"});
@@ -133,8 +133,8 @@ namespace EFCore.TransactionExtensions.Tests
                     }
                 });
 
-                using (var db1 = scope.CreateDbContext())
-                using (var db2 = scope.CreateDbContext())
+                using (var db1 = scope.CreateDbContext<StoreContext>())
+                using (var db2 = scope.CreateDbContext<StoreContext>())
                 {
                     await db1.Customers.AddAsync(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                     await db2.Customers.AddAsync(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -142,7 +142,7 @@ namespace EFCore.TransactionExtensions.Tests
                     await db2.SaveChangesAsync();
                 }
 
-                using (var db = scope.CreateDbContext())
+                using (var db = scope.CreateDbContext<StoreContext>())
                 {
                     db.Customers.Should().HaveCount(3,
                         "DbContext created in the same scope must run in the same transaction");
@@ -155,7 +155,7 @@ namespace EFCore.TransactionExtensions.Tests
             }
         }
 
-        public static void Ambient_TransactionScope_completes(Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+        public static void Ambient_TransactionScope_completes(Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             var event1 = new AutoResetEvent(false);
@@ -176,8 +176,8 @@ namespace EFCore.TransactionExtensions.Tests
             {
                 using (var scope = scopeFactory())
                 {
-                    using (var db1 = scope.CreateDbContext())
-                    using (var db2 = scope.CreateDbContext())
+                    using (var db1 = scope.CreateDbContext<StoreContext>())
+                    using (var db2 = scope.CreateDbContext<StoreContext>())
                     {
                         db1.Customers.Add(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                         db2.Customers.Add(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -185,7 +185,7 @@ namespace EFCore.TransactionExtensions.Tests
                         db2.SaveChanges();
                     }
 
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         db.Customers.Should().HaveCount(2,
                             "DbContext created in the same scope must run in the same transaction");
@@ -207,15 +207,15 @@ namespace EFCore.TransactionExtensions.Tests
             }
         }
 
-        public static void Ambient_TransactionScope_without_complete(Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+        public static void Ambient_TransactionScope_without_complete(Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             using (new TransactionScope())
             {
                 using (var scope = scopeFactory())
                 {
-                    using (var db1 = scope.CreateDbContext())
-                    using (var db2 = scope.CreateDbContext())
+                    using (var db1 = scope.CreateDbContext<StoreContext>())
+                    using (var db2 = scope.CreateDbContext<StoreContext>())
                     {
                         db1.Customers.Add(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                         db2.Customers.Add(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -223,7 +223,7 @@ namespace EFCore.TransactionExtensions.Tests
                         db2.SaveChanges();
                     }
 
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         db.Customers.Should().HaveCount(2,
                             "DbContext created in the same scope must run in the same transaction");
@@ -240,7 +240,7 @@ namespace EFCore.TransactionExtensions.Tests
         }
 
         public static async Task Ambient_TransactionScope_completes_async(
-            Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+            Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             var event1 = new AutoResetEvent(false);
@@ -263,15 +263,15 @@ namespace EFCore.TransactionExtensions.Tests
                 {
                     await Task.Factory.StartNew(() =>
                     {
-                        using (var db = scope.CreateDbContext())
+                        using (var db = scope.CreateDbContext<StoreContext>())
                         {
                             db.Customers.Add(new Customer {CustomerCode = "C3", Name = "Customer 3"});
                             db.SaveChanges();
                         }
                     });
 
-                    using (var db1 = scope.CreateDbContext())
-                    using (var db2 = scope.CreateDbContext())
+                    using (var db1 = scope.CreateDbContext<StoreContext>())
+                    using (var db2 = scope.CreateDbContext<StoreContext>())
                     {
                         await db1.Customers.AddAsync(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                         await db2.Customers.AddAsync(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -279,7 +279,7 @@ namespace EFCore.TransactionExtensions.Tests
                         await db2.SaveChangesAsync();
                     }
 
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         db.Customers.Should().HaveCount(3,
                             "DbContext created in the same scope must run in the same transaction");
@@ -301,7 +301,7 @@ namespace EFCore.TransactionExtensions.Tests
         }
 
         public static async Task Ambient_TransactionScope_without_complete_async(
-            Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+            Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             using (var ambientScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
@@ -310,15 +310,15 @@ namespace EFCore.TransactionExtensions.Tests
                 {
                     await Task.Factory.StartNew(() =>
                     {
-                        using (var db = scope.CreateDbContext())
+                        using (var db = scope.CreateDbContext<StoreContext>())
                         {
                             db.Customers.Add(new Customer {CustomerCode = "C3", Name = "Customer 3"});
                             db.SaveChanges();
                         }
                     });
 
-                    using (var db1 = scope.CreateDbContext())
-                    using (var db2 = scope.CreateDbContext())
+                    using (var db1 = scope.CreateDbContext<StoreContext>())
+                    using (var db2 = scope.CreateDbContext<StoreContext>())
                     {
                         await db1.Customers.AddAsync(new Customer {CustomerCode = "C1", Name = "Customer 1"});
                         await db2.Customers.AddAsync(new Customer {CustomerCode = "C2", Name = "Customer 2"});
@@ -326,7 +326,7 @@ namespace EFCore.TransactionExtensions.Tests
                         await db2.SaveChangesAsync();
                     }
 
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         db.Customers.Should().HaveCount(3,
                             "DbContext created in the same scope must run in the same transaction");
@@ -342,7 +342,7 @@ namespace EFCore.TransactionExtensions.Tests
             }
         }
 
-        public static async Task Parallel_queries(Func<IDbContextTransactionScope<StoreContext>> scopeFactory,
+        public static async Task Parallel_queries(Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             var customers = 999;
@@ -350,7 +350,7 @@ namespace EFCore.TransactionExtensions.Tests
 
             using (var scope = scopeFactory())
             {
-                using (var db = scope.CreateDbContext())
+                using (var db = scope.CreateDbContext<StoreContext>())
                 {
                     for (var i = 1; i <= customers; i++)
                     {
@@ -371,7 +371,7 @@ namespace EFCore.TransactionExtensions.Tests
                 var t1 = Task.Factory.StartNew(async () =>
                 {
                     var r = new Random();
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         var counter = 0;
                         foreach (var customer in db.Customers.Where(x => x.Name.EndsWith("1")).ToList())
@@ -393,7 +393,7 @@ namespace EFCore.TransactionExtensions.Tests
                 var t2 = Task.Factory.StartNew(async () =>
                 {
                     var r = new Random();
-                    using (var db = scope.CreateDbContext())
+                    using (var db = scope.CreateDbContext<StoreContext>())
                     {
                         var counter = 0;
                         foreach (var order in db.Orders.Where(x => x.Customer.CustomerCode.EndsWith("0")).ToList())

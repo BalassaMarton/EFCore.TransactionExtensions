@@ -2,11 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Description>Provider agnostic transaction sharing for Entity Framework Core; types specific to the in-memory provider.</Description>
+    <PackageProjectUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions</RepositoryUrl>
+    <PackageTags>efcore entityframeworkcore transaction inmemory</PackageTags>
+    <PackageLicenseUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions/LICENSE</PackageLicenseUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="2.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>

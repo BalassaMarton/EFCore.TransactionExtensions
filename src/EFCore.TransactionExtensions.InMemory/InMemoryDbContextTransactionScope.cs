@@ -1,14 +1,16 @@
 ﻿using System;
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EFCore.TransactionExtensions.InMemory
 {
-    public class InMemoryDbContextTransactionScope<TContext> : IDbContextTransactionScope<TContext>
-        where TContext : DbContext
+    public class InMemoryDbContextTransactionScope : IDbContextTransactionScope
     {
-        private readonly DbContextOptions<TContext> _options;
+        private readonly string _databaseName;
+        private readonly InMemoryDatabaseRoot _databaseRoot;
+        private readonly Action<DbContextOptionsBuilder> _optionsBuilderAction;
 
         private bool _disposed;
 
@@ -17,29 +19,25 @@ namespace EFCore.TransactionExtensions.InMemory
         }
 
         public InMemoryDbContextTransactionScope(string databaseName,
-            Action<DbContextOptionsBuilder<TContext>> configure)
+            Action<DbContextOptionsBuilder> optionsBuilderAction)
         {
-            var builder = new DbContextOptionsBuilder<TContext>();
-            builder.UseInMemoryDatabase(databaseName);
-            configure?.Invoke(builder);
-            _options = builder.Options;
-            VerifyOptions();
+            _databaseName = databaseName;
+            _optionsBuilderAction = optionsBuilderAction;
         }
 
         public InMemoryDbContextTransactionScope(string databaseName, InMemoryDatabaseRoot databaseRoot,
-            Action<DbContextOptionsBuilder<TContext>> configure)
+            Action<DbContextOptionsBuilder> optionsBuilderAction)
         {
-            var builder = new DbContextOptionsBuilder<TContext>();
-            builder.UseInMemoryDatabase(databaseName, databaseRoot);
-            configure?.Invoke(builder);
-            _options = builder.Options;
-            VerifyOptions();
+            _databaseName = databaseName;
+            _databaseRoot = databaseRoot;
+            _optionsBuilderAction = optionsBuilderAction;
         }
 
-        public TContext CreateDbContext()
+        public TContext CreateDbContext<TContext>() where TContext : DbContext
         {
             ThrowIfDisposed();
-            return (TContext) Activator.CreateInstance(typeof(TContext), _options);
+            return (TContext) Activator.CreateInstance(typeof(TContext), CreateOptions<TContext>());
+            // todo: respect WarningConfiguration
         }
 
         public void Complete()
@@ -54,14 +52,15 @@ namespace EFCore.TransactionExtensions.InMemory
             GC.SuppressFinalize(this);
         }
 
-        private void VerifyOptions()
+        private DbContextOptions<TContext> CreateOptions<TContext>() where TContext : DbContext
         {
-            var ext = _options.GetExtension<CoreOptionsExtension>();
-            // Try creating a transaction to respect WarningConfiguration
-            using (var context = CreateDbContext())
-            {
-                context.Database.BeginTransaction().Dispose();
-            }
+            var builder = new DbContextOptionsBuilder<TContext>();
+            if (_databaseRoot != null)
+                builder.UseInMemoryDatabase(_databaseName, _databaseRoot);
+            else
+                builder.UseInMemoryDatabase(_databaseName);
+            _optionsBuilderAction?.Invoke(builder);
+            return builder.Options;
         }
 
         protected void ThrowIfDisposed()

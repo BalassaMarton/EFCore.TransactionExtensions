@@ -3,8 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EFCore.TransactionExtensions
 {
-    public interface IRelationalDbContextTransactionScope<out TContext> : IDbContextTransactionScope<TContext>
-        where TContext : DbContext
+    public interface IRelationalDbContextTransactionScope : IDbContextTransactionScope
     {
         DbConnection GetDbConnection();
         DbTransaction GetDbTransaction();
