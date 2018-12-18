@@ -9,33 +9,9 @@ using Xunit;
 
 namespace EFCore.TransactionExtensions.Sqlite.Tests
 {
-    public class SqliteDbContextTransactionScopeTests : IDisposable
+    public class StoreContextFixtureSqlite : StoreContextFixture, IDisposable
     {
-        [Fact]
-        public void Single_transaction_completes()
-        {
-            RelationalTests.Single_transaction_completes(CreateScope, CreateStoreContext);
-        }
-
-        [Fact]
-        public void Single_transaction_without_commit()
-        {
-            RelationalTests.Single_transaction_without_commit(CreateScope, CreateStoreContext);
-        }
-
-        [Fact]
-        public async Task Single_transaction_completes_async()
-        {
-            await RelationalTests.Single_transaction_completes_async(CreateScope, CreateStoreContext);
-        }
-
-        [Fact]
-        public async Task Single_transaction_without_commit_async()
-        {
-            await RelationalTests.Single_transaction_without_commit_async(CreateScope, CreateStoreContext);
-        }
-
-        public SqliteDbContextTransactionScopeTests()
+        public StoreContextFixtureSqlite()
         {
             var dbName = "Test-" + Guid.NewGuid().ToString("N");
             _connectionString =
@@ -61,13 +37,13 @@ namespace EFCore.TransactionExtensions.Sqlite.Tests
         private readonly string _connectionString;
         private readonly SqliteConnection _connection;
 
-        private IDbContextTransactionScope CreateScope()
+        public override IDbContextTransactionScope CreateTransactionScope()
         {
             return new SqliteDbContextTransactionScope(_connection, IsolationLevel.ReadCommitted);
         }
 
         // Create a DbContext outside of any transaction scope
-        private StoreContext CreateStoreContext()
+        public override StoreContext CreateStoreContext()
         {
             return new StoreContext(new DbContextOptionsBuilder<StoreContext>().UseSqlite(_connectionString)
                     .Options);

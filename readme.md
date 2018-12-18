@@ -47,7 +47,7 @@ by introducting a new, provider-agnostic service that can be used to create `DbC
                 var products = new ProductService();
                 products.UpdateProducts(transaction);
 
-                transaction.Complete();
+                transaction.Commit();
             }  
 ```
 
@@ -104,7 +104,7 @@ The simplest way of injecting a 'transaction scope factory' is by registering a 
                     // ...
                     db.SaveChanges();
                 }
-                transaction.Complete();
+                transaction.Commit();
             }
         }
     }
