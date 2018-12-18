@@ -32,15 +32,21 @@ namespace EFCore.TransactionExtensions.InMemory
             _databaseRoot = databaseRoot;
             _optionsBuilderAction = optionsBuilderAction;
         }
-
-        public TContext CreateDbContext<TContext>() where TContext : DbContext
+        
+        public TContext CreateDbContext<TContext>(Func<DbContextOptions<TContext>, TContext> factory) where TContext : DbContext
         {
             ThrowIfDisposed();
-            return (TContext) Activator.CreateInstance(typeof(TContext), CreateOptions<TContext>());
+            return factory(CreateOptions<TContext>());
             // todo: respect WarningConfiguration
         }
 
-        public void Complete()
+        public void Commit()
+        {
+            ThrowIfDisposed();
+            // todo: respect WarningConfiguration
+        }
+
+        public void Rollback()
         {
             ThrowIfDisposed();
             // todo: respect WarningConfiguration

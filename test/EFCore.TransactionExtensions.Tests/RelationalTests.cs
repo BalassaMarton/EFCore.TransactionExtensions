@@ -37,7 +37,7 @@ namespace EFCore.TransactionExtensions.Tests
                     db.Customers.Should().BeEmpty("scope hasn't been completed yet");
                 }
 
-                scope.Complete();
+                scope.Commit();
 
                 using (var db = dbFactory())
                 {
@@ -46,7 +46,7 @@ namespace EFCore.TransactionExtensions.Tests
             }
         }
 
-        public static void Single_transaction_without_complete(Func<IDbContextTransactionScope> scopeFactory,
+        public static void Single_transaction_without_commit(Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
             using (var scope = scopeFactory())
@@ -108,7 +108,7 @@ namespace EFCore.TransactionExtensions.Tests
                     db.Customers.Should().BeEmpty("scope hasn't been completed yet");
                 }
 
-                scope.Complete();
+                scope.Commit();
             }
 
             using (var db = dbFactory())
@@ -117,7 +117,7 @@ namespace EFCore.TransactionExtensions.Tests
             }
         }
 
-        public static async Task Single_transaction_without_complete_async(
+        public static async Task Single_transaction_without_commit_async(
             Func<IDbContextTransactionScope> scopeFactory,
             Func<StoreContext> dbFactory)
         {
@@ -191,7 +191,7 @@ namespace EFCore.TransactionExtensions.Tests
                             "DbContext created in the same scope must run in the same transaction");
                     }
 
-                    scope.Complete();
+                    scope.Commit();
 
                     event1.Set();
                     event2.WaitOne();
@@ -229,7 +229,7 @@ namespace EFCore.TransactionExtensions.Tests
                             "DbContext created in the same scope must run in the same transaction");
                     }
 
-                    scope.Complete();
+                    scope.Commit();
                 }
             }
 
@@ -285,7 +285,7 @@ namespace EFCore.TransactionExtensions.Tests
                             "DbContext created in the same scope must run in the same transaction");
                     }
 
-                    scope.Complete();
+                    scope.Commit();
                 }
 
                 event1.Set();
@@ -332,7 +332,7 @@ namespace EFCore.TransactionExtensions.Tests
                             "DbContext created in the same scope must run in the same transaction");
                     }
 
-                    scope.Complete();
+                    scope.Commit();
                 }
             }
 
@@ -342,74 +342,75 @@ namespace EFCore.TransactionExtensions.Tests
             }
         }
 
-        public static async Task Parallel_queries(Func<IDbContextTransactionScope> scopeFactory,
-            Func<StoreContext> dbFactory)
-        {
-            var customers = 999;
-            var orders = 99;
+        // This will probably fail in reality, as most providers are not thread-safe
+        //public static async Task Parallel_queries(Func<IDbContextTransactionScope> scopeFactory,
+        //    Func<StoreContext> dbFactory)
+        //{
+        //    var customers = 999;
+        //    var orders = 99;
 
-            using (var scope = scopeFactory())
-            {
-                using (var db = scope.CreateDbContext<StoreContext>())
-                {
-                    for (var i = 1; i <= customers; i++)
-                    {
-                        var customer = new Customer() {Name = $"Customer {i}"};
-                        db.Customers.Add(customer);
-                        for (var j = 1; j <= orders; j++)
-                            db.Orders.Add(new Order()
-                            {
-                                Customer = customer,
-                                OrderDate = DateTime.Today,
-                                OrderNumber = $"Order{i}-{j}"
-                            });
-                    }
+        //    using (var scope = scopeFactory())
+        //    {
+        //        using (var db = scope.CreateDbContext<StoreContext>())
+        //        {
+        //            for (var i = 1; i <= customers; i++)
+        //            {
+        //                var customer = new Customer() {Name = $"Customer {i}"};
+        //                db.Customers.Add(customer);
+        //                for (var j = 1; j <= orders; j++)
+        //                    db.Orders.Add(new Order()
+        //                    {
+        //                        Customer = customer,
+        //                        OrderDate = DateTime.Today,
+        //                        OrderNumber = $"Order{i}-{j}"
+        //                    });
+        //            }
 
-                    db.SaveChanges();
-                }
+        //            db.SaveChanges();
+        //        }
 
-                var t1 = Task.Factory.StartNew(async () =>
-                {
-                    var r = new Random();
-                    using (var db = scope.CreateDbContext<StoreContext>())
-                    {
-                        var counter = 0;
-                        foreach (var customer in db.Customers.Where(x => x.Name.EndsWith("1")).ToList())
-                        {
-                            await Task.Delay(customer.Id % 11);
-                            db.Orders.Add(new Order
-                            {
-                                Customer = customer,
-                                OrderNumber = $"Order-{customer.CustomerCode}-{counter}"
-                            });
-                            counter++;
-                        }
+        //        var t1 = Task.Factory.StartNew(async () =>
+        //        {
+        //            var r = new Random();
+        //            using (var db = scope.CreateDbContext<StoreContext>())
+        //            {
+        //                var counter = 0;
+        //                foreach (var customer in db.Customers.Where(x => x.Name.EndsWith("1")).ToList())
+        //                {
+        //                    await Task.Delay(customer.Id % 11);
+        //                    db.Orders.Add(new Order
+        //                    {
+        //                        Customer = customer,
+        //                        OrderNumber = $"Order-{customer.CustomerCode}-{counter}"
+        //                    });
+        //                    counter++;
+        //                }
 
-                        db.SaveChanges();
-                        counter.Should().Be(customers / 10);
-                    }
-                });
+        //                db.SaveChanges();
+        //                counter.Should().Be(customers / 10);
+        //            }
+        //        });
 
-                var t2 = Task.Factory.StartNew(async () =>
-                {
-                    var r = new Random();
-                    using (var db = scope.CreateDbContext<StoreContext>())
-                    {
-                        var counter = 0;
-                        foreach (var order in db.Orders.Where(x => x.Customer.CustomerCode.EndsWith("0")).ToList())
-                        {
-                            await Task.Delay(order.Id % 11);
-                            counter++;
-                        }
+        //        var t2 = Task.Factory.StartNew(async () =>
+        //        {
+        //            var r = new Random();
+        //            using (var db = scope.CreateDbContext<StoreContext>())
+        //            {
+        //                var counter = 0;
+        //                foreach (var order in db.Orders.Where(x => x.Customer.CustomerCode.EndsWith("0")).ToList())
+        //                {
+        //                    await Task.Delay(order.Id % 11);
+        //                    counter++;
+        //                }
 
-                        counter.Should().Be(customers * orders / 10);
-                    }
-                });
+        //                counter.Should().Be(customers * orders / 10);
+        //            }
+        //        });
 
-                await Task.WhenAll(t1, t2);
+        //        await Task.WhenAll(t1, t2);
 
-                scope.Complete();
-            }
-        }
+        //        scope.Complete();
+        //    }
+        //}
     }
 }

@@ -1,8 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Description>Provider agnostic transaction sharing for Entity Framework Core</Description>
     <PackageProjectUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions</PackageProjectUrl>
     <RepositoryUrl>https://github.com/BalassaMarton/EFCore.TransactionExtensions</RepositoryUrl>

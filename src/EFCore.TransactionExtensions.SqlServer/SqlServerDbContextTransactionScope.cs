@@ -3,6 +3,7 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Transactions;
+using EFCore.TransactionExtensions.Common;
 using Microsoft.EntityFrameworkCore;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -10,8 +11,10 @@ namespace EFCore.TransactionExtensions.SqlServer
 {
     public class SqlServerDbContextTransactionScope : IDbContextTransactionScope, IRelationalDbContextTransactionScope
     {
-        private readonly bool _ownsConnection;
         private readonly SqlConnection _connection;
+        private readonly bool _ownsConnection;
+        private readonly SqlTransaction _transaction;
+        private readonly bool _ownsTransaction;
         private readonly Action<DbContextOptionsBuilder> _optionsBuilderAction;
         private bool _disposed;
 
@@ -66,6 +69,17 @@ namespace EFCore.TransactionExtensions.SqlServer
             return connection;
         }
 
+        private static SqlTransaction CreateTransaction(SqlConnection connection, IsolationLevel isolationLevel, string transactionName)
+        {
+            // Let the connection handle ambient transactions
+            if (Transaction.Current != null)
+                return null;
+            if (transactionName != null)
+                return connection.BeginTransaction(isolationLevel, transactionName);
+            return
+                connection.BeginTransaction(isolationLevel);
+        }
+
         public SqlServerDbContextTransactionScope(SqlConnection connection) : this(connection,
             IsolationLevel.Unspecified, null, null)
         {
@@ -109,49 +123,65 @@ namespace EFCore.TransactionExtensions.SqlServer
         {
         }
 
+        public SqlServerDbContextTransactionScope(SqlConnection connection, SqlTransaction transaction) : this(connection, false,
+            transaction, false, null)
+        {
+        }
+
+        public SqlServerDbContextTransactionScope(SqlConnection connection, SqlTransaction transaction, Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connection, false,
+            transaction, false, optionsBuilderAction)
+        {
+        }
+
         protected SqlServerDbContextTransactionScope(SqlConnection connection, bool ownsConnection, IsolationLevel isolationLevel, string transactionName,
+            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(connection, ownsConnection, CreateTransaction(connection, isolationLevel, transactionName), true, optionsBuilderAction)
+        {
+        }
+
+        protected SqlServerDbContextTransactionScope(SqlConnection connection, bool ownsConnection, SqlTransaction transaction, bool ownsTransaction,
             Action<DbContextOptionsBuilder> optionsBuilderAction)
         {
             _connection = connection;
             _ownsConnection = ownsConnection;
+            _transaction = transaction;
+            _ownsTransaction = ownsTransaction;
             _optionsBuilderAction = optionsBuilderAction;
-            // Detect ambient transaction - in this case we let SqlClient handle transactions
-            if (Transaction.Current == null)
-                DbTransaction = _connection.BeginTransaction(isolationLevel, transactionName);
         }
 
         public DbConnection DbConnection => _connection;
-        public DbTransaction DbTransaction { get; private set; }
+        public DbTransaction DbTransaction => _transaction;
 
-        public TContext CreateDbContext<TContext>() where TContext : DbContext
+        public TContext CreateDbContext<TContext>(Func<DbContextOptions<TContext>, TContext> factory) where TContext : DbContext
         {
             ThrowIfDisposed();
-            var context = (TContext) Activator.CreateInstance(typeof(TContext), CreateOptions<TContext>());
-            if (DbTransaction != null)
-                context.Database.UseTransaction(DbTransaction);
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+            var context = factory(CreateOptions<TContext>());
+            if (_transaction != null)
+                context.Database.UseTransaction(_transaction);
             return context;
         }
 
-        public void Complete()
+        public void Commit()
         {
             ThrowIfDisposed();
-            DbTransaction?.Commit();
+            if (!_ownsTransaction)
+                throw new InvalidOperationException(Messages.CommitExternalTransaction);
+            _transaction?.Commit();
+        }
+
+        public void Rollback()
+        {
+            ThrowIfDisposed();
+            if (!_ownsTransaction)
+                throw new InvalidOperationException(Messages.RollbackExternalTransaction);
+            _transaction?.Rollback();
         }
 
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
-        }
-
-        public DbConnection GetDbConnection()
-        {
-            return _connection;
-        }
-
-        public DbTransaction GetDbTransaction()
-        {
-            return DbTransaction;
         }
 
         private DbContextOptions<TContext> CreateOptions<TContext>() where TContext : DbContext
@@ -175,7 +205,8 @@ namespace EFCore.TransactionExtensions.SqlServer
             _disposed = true;
             if (disposing)
             {
-                DbTransaction?.Dispose();
+                if (_ownsTransaction)
+                    _transaction?.Dispose();
                 if (_ownsConnection)
                     _connection.Dispose();
             }

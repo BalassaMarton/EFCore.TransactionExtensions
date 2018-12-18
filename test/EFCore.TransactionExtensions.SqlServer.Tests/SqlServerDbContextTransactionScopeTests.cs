@@ -21,9 +21,9 @@ namespace EFCore.TransactionExtensions.SqlServer.Tests
         }
 
         [Fact]
-        public void Single_transaction_without_complete()
+        public void Single_transaction_without_commit()
         {
-            RelationalTests.Single_transaction_without_complete(CreateScope, CreateStoreContext);
+            RelationalTests.Single_transaction_without_commit(CreateScope, CreateStoreContext);
         }
 
         [Fact]
@@ -33,9 +33,9 @@ namespace EFCore.TransactionExtensions.SqlServer.Tests
         }
 
         [Fact]
-        public async Task Single_transaction_without_complete_async()
+        public async Task Single_transaction_without_commit_async()
         {
-            await RelationalTests.Single_transaction_without_complete_async(CreateScope, CreateStoreContext);
+            await RelationalTests.Single_transaction_without_commit_async(CreateScope, CreateStoreContext);
         }
 
         [Fact]
@@ -62,11 +62,11 @@ namespace EFCore.TransactionExtensions.SqlServer.Tests
             await RelationalTests.Ambient_TransactionScope_without_complete_async(CreateScope, CreateStoreContext);
         }
 
-        [Fact]
-        public async Task Parallel_queries()
-        {
-            await RelationalTests.Parallel_queries(CreateScope, CreateStoreContext);
-        }
+        //[Fact]
+        //public async Task Parallel_queries()
+        //{
+        //    await RelationalTests.Parallel_queries(CreateScope, CreateStoreContext);
+        //}
 
         public SqlServerDbContextTransactionScopeTests()
         {

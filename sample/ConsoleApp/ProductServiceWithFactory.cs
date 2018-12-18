@@ -21,7 +21,7 @@ namespace ConsoleApp
                     // ...
                     db.SaveChanges();
                 }
-                transaction.Complete();
+                transaction.Commit();
             }
         }
     }

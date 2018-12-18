@@ -5,7 +5,7 @@ namespace EFCore.TransactionExtensions
 {
     public interface IRelationalDbContextTransactionScope : IDbContextTransactionScope
     {
-        DbConnection GetDbConnection();
-        DbTransaction GetDbTransaction();
+        DbConnection DbConnection { get; }
+        DbTransaction DbTransaction { get; }
     }
 }

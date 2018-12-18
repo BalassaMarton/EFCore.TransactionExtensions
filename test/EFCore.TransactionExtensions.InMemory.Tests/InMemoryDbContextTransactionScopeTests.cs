@@ -46,7 +46,7 @@ namespace EFCore.TransactionExtensions.InMemory.Tests
                             "DbContext created in the same scope must run in the same transaction");
                     }
 
-                    scope.Complete();
+                    scope.Commit();
                 }
 
                 transactionScope.Complete();
@@ -54,11 +54,11 @@ namespace EFCore.TransactionExtensions.InMemory.Tests
         }
 
         [Fact(Skip = "Not implemented")]
-        public void CreateDbContext_throws_whith_default_warning_configuration()
+        public void CreateDbContext_throws_with_default_warning_configuration()
         {
             Assert.ThrowsAny<InvalidOperationException>(() =>
             {
-                using (var scope = new InMemoryDbContextTransactionScope(nameof(CreateDbContext_throws_whith_default_warning_configuration)))
+                using (var scope = new InMemoryDbContextTransactionScope(nameof(CreateDbContext_throws_with_default_warning_configuration)))
                 {
                     scope.CreateDbContext<StoreContext>();
                 }

@@ -9,12 +9,22 @@ namespace EFCore.TransactionExtensions
         /// Creates a new instance of <typeparamref name="TContext"/> and enrolls it to the shared transaction.
         /// </summary>
         /// <typeparam name="TContext">The type of the DB context.</typeparam>
+        /// <param name="factory">A factory delegate that will be used to create the context instance using a <see cref="DbContextOptions{TContext}"/>.</param>
         /// <returns>The new <typeparamref name="TContext"/> instance.</returns>
-        TContext CreateDbContext<TContext>() where TContext : DbContext;
+        /// <remarks>
+        /// This method will create a <see cref="DbContextOptions{TContext}"/> object, call the factory, and enroll the created context into the transaction.
+        /// </remarks>
+        TContext CreateDbContext<TContext>(Func<DbContextOptions<TContext>, TContext> factory) where TContext : DbContext;
 
         /// <summary>
-        /// Completes (commits) the transaction.
+        /// Commits the transaction.
         /// </summary>
-        void Complete();
+        void Commit();
+
+        /// <summary>
+        /// Rolls back the transaction.
+        /// </summary>
+        void Rollback();
+
     }
 }

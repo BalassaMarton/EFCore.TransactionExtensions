@@ -7,7 +7,7 @@ However, when we try to share a transaction between multiple `DbContexts`, the [
 ties our code to relational providers, or worse yet, to a specific provider. This helper library solves the problem
 by introducting a new, provider-agnostic service that can be used to create `DbContext`s that share a single transaction.
 
-## Usage
+## Basic usage
 
 1. Your DbContext should have a constructor with a `DbContextOptions` parameter.
 
@@ -49,10 +49,29 @@ by introducting a new, provider-agnostic service that can be used to create `DbC
 
                 transaction.Complete();
             }  
-
 ```
 
-### Dependency injection
+## Providing additional constructor parameters
+
+In some cases, your DbContext will have additional constructor dependencies. When that is the case, use the more general (in fact, original)
+version of `CreateDbContext` that delegates creating the `DbContext` instance.
+The following example provides a (fictional) user resolver service to the DbContext to enable automatic audit logs:
+
+```cs
+        public void UpdateProducts(IDbContextTransactionScope transaction)
+        {
+            using (var db = transaction.CreateDbContext<StoreContext>(options => new StoreContext(options, userResolver)))
+            {
+                foreach (var prod in db.Products)
+                {
+                    // ...
+                }
+                db.SaveChanges();
+            }
+        }
+```
+
+## Dependency injection
 
 In most cases, your application code will not expect an externally provided transaction scope, but a factory for creating
 new transaction scopes. This is analogous with the injected `DbContextOptions` (instead of providing a `DbContext`,

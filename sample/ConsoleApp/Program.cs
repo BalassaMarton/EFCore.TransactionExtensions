@@ -19,7 +19,7 @@ namespace ConsoleApp
                 var products = new ProductService();
                 products.UpdateProducts(transaction);
 
-                transaction.Complete();
+                transaction.Commit();
             }
         }
     }

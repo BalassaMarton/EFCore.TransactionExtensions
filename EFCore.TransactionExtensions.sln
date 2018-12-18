@@ -28,6 +28,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{97823E
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp", "sample\ConsoleApp\ConsoleApp.csproj", "{AC52ECF9-6B26-46B3-A8EB-1435E4972F1F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFCore.TransactionExtensions.Sqlite", "src\EFCore.TransactionExtensions.Sqlite\EFCore.TransactionExtensions.Sqlite.csproj", "{92A6A530-712A-40B9-968F-8B7A5BB03BFB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFCore.TransactionExtensions.Sqlite.Tests", "test\EFCore.TransactionExtensions.Sqlite.Tests\EFCore.TransactionExtensions.Sqlite.Tests.csproj", "{CF2F303E-72D4-4916-B138-BEA755F061E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +66,14 @@ Global
 		{AC52ECF9-6B26-46B3-A8EB-1435E4972F1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AC52ECF9-6B26-46B3-A8EB-1435E4972F1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AC52ECF9-6B26-46B3-A8EB-1435E4972F1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{92A6A530-712A-40B9-968F-8B7A5BB03BFB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{92A6A530-712A-40B9-968F-8B7A5BB03BFB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{92A6A530-712A-40B9-968F-8B7A5BB03BFB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{92A6A530-712A-40B9-968F-8B7A5BB03BFB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF2F303E-72D4-4916-B138-BEA755F061E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF2F303E-72D4-4916-B138-BEA755F061E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF2F303E-72D4-4916-B138-BEA755F061E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF2F303E-72D4-4916-B138-BEA755F061E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -74,6 +86,8 @@ Global
 		{4041DE77-6E4D-4EA6-8131-2CF4CCE8A2F7} = {60353016-3539-4F7D-A188-7A2AF726DDC5}
 		{540394B0-A147-4C9A-A594-B95AD238B648} = {60353016-3539-4F7D-A188-7A2AF726DDC5}
 		{AC52ECF9-6B26-46B3-A8EB-1435E4972F1F} = {97823E39-A18F-451C-930D-D47AE8EEC249}
+		{92A6A530-712A-40B9-968F-8B7A5BB03BFB} = {F87892BC-4BF4-43D9-A980-DE5E719E13AB}
+		{CF2F303E-72D4-4916-B138-BEA755F061E3} = {60353016-3539-4F7D-A188-7A2AF726DDC5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B798D3A5-BF8D-49C1-AF17-FC1D4964DB2C}
