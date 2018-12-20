@@ -14,7 +14,7 @@ namespace EFCore.TransactionExtensions.InMemory.Tests
         {
             using (var transactionScope = new TransactionScope())
             {
-                using (var scope = StoreContextFixture.CreateTransactionScope())
+                using (var scope = DatabaseFixture.CreateTransactionScope())
                 {
                     using (var db1 = scope.CreateDbContext<StoreContext>())
                     using (var db2 = scope.CreateDbContext<StoreContext>())
@@ -53,7 +53,7 @@ namespace EFCore.TransactionExtensions.InMemory.Tests
         [Fact]
         public void Single_transaction_test()
         {
-            using (var scope = StoreContextFixture.CreateTransactionScope())
+            using (var scope = DatabaseFixture.CreateTransactionScope())
             {
                 using (var db1 = scope.CreateDbContext<StoreContext>())
                 using (var db2 = scope.CreateDbContext<StoreContext>())
@@ -72,11 +72,11 @@ namespace EFCore.TransactionExtensions.InMemory.Tests
             }
         }
 
-        protected readonly StoreContextFixture StoreContextFixture = new StoreContextFixtureInMemory();
+        protected readonly DatabaseFixture DatabaseFixture = new DatabaseFixtureInMemory();
 
         public void Dispose()
         {
-            (StoreContextFixture as IDisposable)?.Dispose();
+            (DatabaseFixture as IDisposable)?.Dispose();
         }
     }
 }

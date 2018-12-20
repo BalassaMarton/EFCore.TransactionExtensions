@@ -11,19 +11,19 @@ using Xunit;
 
 namespace EFCore.TransactionExtensions.Tests
 {
-    public abstract class RelationalTestsBase<TStoreContextFixture> : IDisposable where TStoreContextFixture : StoreContextFixture
+    public abstract class RelationalTestsBase<TDatabaseFixture> : IDisposable where TDatabaseFixture : DatabaseFixture
     {
-        protected readonly TStoreContextFixture StoreContextFixture;
+        protected readonly TDatabaseFixture DatabaseFixture;
 
-        protected RelationalTestsBase()
+        protected RelationalTestsBase(TDatabaseFixture databaseFixture)
         {
-            StoreContextFixture = Activator.CreateInstance<TStoreContextFixture>();
+            DatabaseFixture = databaseFixture;
         }
 
         [Fact]
         public void Single_transaction_completes()
         {
-            using (var scope = StoreContextFixture.CreateTransactionScope())
+            using (var scope = DatabaseFixture.CreateTransactionScope())
             {
                 using (var db1 = scope.CreateDbContext<StoreContext>())
                 using (var db2 = scope.CreateDbContext<StoreContext>())
@@ -40,14 +40,14 @@ namespace EFCore.TransactionExtensions.Tests
                         "DbContext created in the same scope must run in the same transaction");
                 }
 
-                using (var db = StoreContextFixture.CreateStoreContext())
+                using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
                 {
                     db.Customers.Should().BeEmpty("scope hasn't been completed yet");
                 }
 
                 scope.Commit();
 
-                using (var db = StoreContextFixture.CreateStoreContext())
+                using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
                 {
                     db.Customers.Should().HaveCount(2, "scope has been completed");
                 }
@@ -57,7 +57,7 @@ namespace EFCore.TransactionExtensions.Tests
         [Fact]
         public void Single_transaction_without_commit()
         {
-            using (var scope = StoreContextFixture.CreateTransactionScope())
+            using (var scope = DatabaseFixture.CreateTransactionScope())
             {
                 using (var db1 = scope.CreateDbContext<StoreContext>())
                 using (var db2 = scope.CreateDbContext<StoreContext>())
@@ -74,7 +74,7 @@ namespace EFCore.TransactionExtensions.Tests
                         "DbContext created in the same scope must run in the same transaction");
                 }
             }
-            using (var db = StoreContextFixture.CreateStoreContext())
+            using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
             {
                 db.Customers.Should().BeEmpty("scope hasn't been completed");
             }
@@ -83,7 +83,7 @@ namespace EFCore.TransactionExtensions.Tests
         [Fact]
         public async Task Single_transaction_completes_async()
         {
-            using (var scope = StoreContextFixture.CreateTransactionScope())
+            using (var scope = DatabaseFixture.CreateTransactionScope())
             {
                 await Task.Factory.StartNew(() =>
                 {
@@ -110,7 +110,7 @@ namespace EFCore.TransactionExtensions.Tests
                         "DbContext created in the same scope must run in the same transaction");
                 }
 
-                using (var db = StoreContextFixture.CreateStoreContext())
+                using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
                 {
                     db.Customers.Should().BeEmpty("scope hasn't been completed yet");
                 }
@@ -118,7 +118,7 @@ namespace EFCore.TransactionExtensions.Tests
                 scope.Commit();
             }
 
-            using (var db = StoreContextFixture.CreateStoreContext())
+            using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
             {
                 db.Customers.Should().HaveCount(3, "scope has been completed");
             }
@@ -127,7 +127,7 @@ namespace EFCore.TransactionExtensions.Tests
         [Fact]
         public async Task Single_transaction_without_commit_async()
         {
-            using (var scope = StoreContextFixture.CreateTransactionScope())
+            using (var scope = DatabaseFixture.CreateTransactionScope())
             {
                 await Task.Factory.StartNew(() =>
                 {
@@ -155,7 +155,7 @@ namespace EFCore.TransactionExtensions.Tests
                 }
             }
 
-            using (var db = StoreContextFixture.CreateStoreContext())
+            using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
             {
                 db.Customers.Should().BeEmpty("scope hasn't been completed");
             }
@@ -163,7 +163,7 @@ namespace EFCore.TransactionExtensions.Tests
 
         public void Dispose()
         {
-            (StoreContextFixture as IDisposable)?.Dispose();
+            (DatabaseFixture as IDisposable)?.Dispose();
         }
     }
 }

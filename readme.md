@@ -1,4 +1,8 @@
+# !!! WORK IN PROGRESS !!!
+
 # Provider-agnostic transaction sharing with Entity Framework Core
+
+
 
 ## Intro
 
@@ -22,90 +26,112 @@ by introducting a new, provider-agnostic service that can be used to create `DbC
     }
 ```
 
-2. Use the provider-agnostic `IDbContextTransactionScope` interface in application code:
+2. Use the provider-agnostic `IDbContextTransactionScope` interface in application code, where multiple db contexts or context types
+are involved within a single transaction:
 
 ```cs
-        public void UpdateProducts(IDbContextTransactionScope transaction)
-        {
-            using (var db = transaction.CreateDbContext<StoreContext>())
-            {
-                foreach (var prod in db.Products)
-                {
-                    // ...
-                }
-                db.SaveChanges();
-            }
-        }
-```
-
-3. Create the provider-specific object where the actual connection is known:
-
-```cs
-            using (var transaction =
-                new SqlServerDbContextTransactionScope(configuration.GetConnectionString("StoreDb")))
-            {
-                var products = new ProductService();
-                products.UpdateProducts(transaction);
-
-                transaction.Commit();
-            }  
-```
-
-## Providing additional constructor parameters
-
-In some cases, your DbContext will have additional constructor dependencies. When that is the case, use the more general (in fact, original)
-version of `CreateDbContext` that delegates creating the `DbContext` instance.
-The following example provides a (fictional) user resolver service to the DbContext to enable automatic audit logs:
-
-```cs
-        public void UpdateProducts(IDbContextTransactionScope transaction)
-        {
-            using (var db = transaction.CreateDbContext<StoreContext>(options => new StoreContext(options, userResolver)))
-            {
-                foreach (var prod in db.Products)
-                {
-                    // ...
-                }
-                db.SaveChanges();
-            }
-        }
-```
-
-## Dependency injection
-
-In most cases, your application code will not expect an externally provided transaction scope, but a factory for creating
-new transaction scopes. This is analogous with the injected `DbContextOptions` (instead of providing a `DbContext`,
-provide the means of connecting to the database, and let the consumer create instances of the context).
-The simplest way of injecting a 'transaction scope factory' is by registering a `Func<IDbContextTransactionScope>`:
-
-```cs
-        serviceCollection.AddSingleton<Func<IDbContextTransactionScope>>(
-            () => new SqlServerDbContextTransactionScope(configuration.GetConnectionString("StoreDb")));
-```
-
-...and injecting it into the consumer:
-
-```cs
-    public class ProductService
+    public class CustomerImporter
     {
-        private Func<IDbContextTransactionScope> _transactionFactory;
+        private readonly IDbContextTransactionScope _transaction;
 
-        public ProductService(Func<IDbContextTransactionScope> transactionFactory)
+        public CustomerImporter(IDbContextTransactionScope transaction)
         {
-            _transactionFactory = transactionFactory;
+            _transaction = transaction;
         }
 
-        public void UpdateProducts()
+        public void ImportCustomers(JObject json)
         {
-            using (var transaction = _transactionFactory())
+            using (var db = _transaction.CreateDbContext<StoreContext>())
             {
-                using (var db = transaction.CreateDbContext<StoreContext>())
-                {
-                    // ...
-                    db.SaveChanges();
-                }
-                transaction.Commit();
+                // Import customers
+                db.SaveChanges();
             }
         }
     }
+
+    public class OrderImporter
+    {
+        private readonly IDbContextTransactionScope _transaction;
+
+        public OrderImporter(IDbContextTransactionScope transaction)
+        {
+            _transaction = transaction;
+        }
+
+        public void ImportOrders(JObject json)
+        {
+            using (var db = _transaction.CreateDbContext<StoreContext>())
+            {
+                // Import orders
+                db.SaveChanges();
+            }
+        }
+    }
+
+```
+
+
+3. Create the provider-specific implementation where the actual connection is known:
+
+```cs
+    using (var transaction =
+        new SqlServerDbContextTransactionScope(connectionString: configuration.GetConnectionString("StoreDb")))
+    {
+        new CustomerImporter(transaction).ImportCustomers(customersJson);
+        new OrderImporter(transaction).ImportOrders(ordersJson);
+
+        transaction.Commit();
+    }
+```
+
+Whenever there's a need to perform operations in a single transaction, we just create a scope and invoke any
+components involved. Black box testing and replacing these components becomes easier as they can be completely agnostic about 
+transaction handling and can create as many DbContexts as they like.
+
+## Dependency injection
+
+The package natively supports dependency injection with Microsoft's `IServiceProvider`. Transaction scopes are registered 
+with configurable lifetime (scoped by default).
+
+### Basic registration
+
+```cs
+services.AddDbContextTransactionScope(provider =>
+    new SqlServerDbContextTransactionScope(connectionString: configuration.GetConnectionString("StoreDb")));
+```
+
+### Named scopes
+
+When working with multiple databases, declaring a transaction scope as a constructor dependency would make it impossible for the container
+to inject the correct instance. To solve this, we introduce named transaction scopes:
+
+```cs
+services.AddDbContextTransactionScope("Store", provider =>
+    new SqlServerDbContextTransactionScope(connectionString: configuration.GetConnectionString("StoreDb")));
+```
+
+In application code, we have to replace any constructor dependencies referencing `IDbContextTransactionScope` 
+with another service: `IDbContextTransactionScopeResolver`. This service can resolve the transaction scope by name:
+
+```cs
+    private readonly IDbContextTransactionScopeResolver _scopeResolver;
+```
+```cs
+    using (var db = _resolver.Resolve("Store").CreateDbContext<StoreContext>()) {
+        // do stuff
+        db.SaveChanges();
+    }
+```
+
+### Providing additional constructor parameters
+
+Internally, the transaction scope will invoke the `IDbContextActivator` internal service to create the `DbContext`
+instances. When using an `IServiceProvider`, this service is injected automatically, and resolves any constructor
+dependencies of the context from the container, except `DbContextOptions` that must be set up for transaction handling.
+
+When some constructor parameters cannot be resolved automatically, or we don't use the built-in container,
+we can provide a factory for the scope:
+
+```cs
+    db = scope.CreateDbContext<MyContext>(options => new MyContext(options, "some parameter")))
 ```

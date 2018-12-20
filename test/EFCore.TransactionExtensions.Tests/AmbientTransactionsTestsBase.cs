@@ -8,13 +8,13 @@ using Xunit;
 
 namespace EFCore.TransactionExtensions.Tests
 {
-    public abstract class AmbientTransactionsTestsBase<TStoreContextFixture> : IDisposable where TStoreContextFixture : StoreContextFixture
+    public abstract class AmbientTransactionsTestsBase<TDatabaseFixture> : IDisposable where TDatabaseFixture : DatabaseFixture
     {
-        protected readonly TStoreContextFixture StoreContextFixture;
+        protected readonly TDatabaseFixture DatabaseFixture;
 
-        protected AmbientTransactionsTestsBase()
+        protected AmbientTransactionsTestsBase(TDatabaseFixture databaseFixture)
         {
-            StoreContextFixture = Activator.CreateInstance<TStoreContextFixture>();
+            DatabaseFixture = databaseFixture;
         }
 
         [Fact]
@@ -26,7 +26,7 @@ namespace EFCore.TransactionExtensions.Tests
             var t = new Thread(() =>
             {
                 event1.WaitOne();
-                using (var db = StoreContextFixture.CreateStoreContext())
+                using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
                 {
                     db.Customers.Should().BeEmpty("TransactionScope hasn't been completed yet");
                 }
@@ -36,7 +36,7 @@ namespace EFCore.TransactionExtensions.Tests
 
             using (var ambientScope = new TransactionScope())
             {
-                using (var scope = StoreContextFixture.CreateTransactionScope())
+                using (var scope = DatabaseFixture.CreateTransactionScope())
                 {
                     using (var db1 = scope.CreateDbContext<StoreContext>())
                     using (var db2 = scope.CreateDbContext<StoreContext>())
@@ -63,7 +63,7 @@ namespace EFCore.TransactionExtensions.Tests
 
             t.Join();
 
-            using (var db = StoreContextFixture.CreateStoreContext())
+            using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
             {
                 db.Customers.Should().HaveCount(2, "TransactionScope has been completed");
             }
@@ -74,7 +74,7 @@ namespace EFCore.TransactionExtensions.Tests
         {
             using (new TransactionScope())
             {
-                using (var scope = StoreContextFixture.CreateTransactionScope())
+                using (var scope = DatabaseFixture.CreateTransactionScope())
                 {
                     using (var db1 = scope.CreateDbContext<StoreContext>())
                     using (var db2 = scope.CreateDbContext<StoreContext>())
@@ -95,7 +95,7 @@ namespace EFCore.TransactionExtensions.Tests
                 }
             }
 
-            using (var db = StoreContextFixture.CreateStoreContext())
+            using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
             {
                 db.Customers.Should().BeEmpty("TransactionScope hasn't been completed");
             }
@@ -110,7 +110,7 @@ namespace EFCore.TransactionExtensions.Tests
             var t = new Thread(() =>
             {
                 event1.WaitOne();
-                using (var db = StoreContextFixture.CreateStoreContext())
+                using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
                 {
                     db.Customers.Should().BeEmpty("TransactionScope hasn't been completed yet");
                 }
@@ -120,7 +120,7 @@ namespace EFCore.TransactionExtensions.Tests
 
             using (var ambientScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
-                using (var scope = StoreContextFixture.CreateTransactionScope())
+                using (var scope = DatabaseFixture.CreateTransactionScope())
                 {
                     await Task.Factory.StartNew(() =>
                     {
@@ -155,7 +155,7 @@ namespace EFCore.TransactionExtensions.Tests
                 ambientScope.Complete();
             }
 
-            using (var db = StoreContextFixture.CreateStoreContext())
+            using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
             {
                 db.Customers.Should().HaveCount(3, "TransactionScope has been completed");
             }
@@ -166,7 +166,7 @@ namespace EFCore.TransactionExtensions.Tests
         {
             using (var ambientScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
-                using (var scope = StoreContextFixture.CreateTransactionScope())
+                using (var scope = DatabaseFixture.CreateTransactionScope())
                 {
                     await Task.Factory.StartNew(() =>
                     {
@@ -196,7 +196,7 @@ namespace EFCore.TransactionExtensions.Tests
                 }
             }
 
-            using (var db = StoreContextFixture.CreateStoreContext())
+            using (var db = new StoreContext(DatabaseFixture.CreateDbContextOptions<StoreContext>()))
             {
                 db.Customers.Should().BeEmpty("TransactionScope hasn't been completed");
             }
@@ -204,7 +204,7 @@ namespace EFCore.TransactionExtensions.Tests
 
         public void Dispose()
         {
-            (StoreContextFixture as IDisposable)?.Dispose();
+            (DatabaseFixture as IDisposable)?.Dispose();
         }
     }
 }

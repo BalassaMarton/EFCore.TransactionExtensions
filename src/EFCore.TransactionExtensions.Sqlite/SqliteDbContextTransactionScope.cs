@@ -3,102 +3,74 @@ using System.Data;
 using System.Data.Common;
 using System.Transactions;
 using EFCore.TransactionExtensions.Common;
+using EFCore.TransactionExtensions.Infrastructure;
+using JetBrains.Annotations;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace EFCore.TransactionExtensions.Sqlite
 {
-    public class SqliteDbContextTransactionScope : IDbContextTransactionScope, IRelationalDbContextTransactionScope
+    public class SqliteDbContextTransactionScope : DbContextTransactionScope, IRelationalDbContextTransactionScope
     {
         private readonly SqliteConnection _connection;
         private readonly bool _ownsConnection;
         private readonly SqliteTransaction _transaction;
         private readonly bool _ownsTransaction;
-        private readonly Action<DbContextOptionsBuilder> _optionsBuilderAction;
-        private bool _disposed;
 
-        public SqliteDbContextTransactionScope(string connectionString) : this(
-                CreateConnection(connectionString), IsolationLevel.Unspecified, null)
+        public SqliteDbContextTransactionScope(
+            SqliteConnection connection = null,
+            string connectionString = null,
+            SqliteTransaction transaction = null,
+            IsolationLevel isolationLevel = IsolationLevel.Unspecified,
+            Action<DbContextOptionsBuilder> optionsBuilderAction = null,
+            IDbContextActivator activator = null) : this(new SqliteDbContextTransactionScopeOptions
+        {
+            Connection = connection,
+            ConnectionString = connectionString,
+            Transaction = transaction,
+            IsolationLevel = isolationLevel,
+            OptionsBuilderAction = optionsBuilderAction,
+        })
         {
         }
 
-        public SqliteDbContextTransactionScope(string connectionString,
-            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(
-                CreateConnection(connectionString), IsolationLevel.Unspecified, optionsBuilderAction)
-        {
-        }
-
-        public SqliteDbContextTransactionScope(string connectionString, IsolationLevel isolationLevel) : this(
-            CreateConnection(connectionString), isolationLevel, null)
-        {
-        }
-
-        public SqliteDbContextTransactionScope(string connectionString, IsolationLevel isolationLevel,
-            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(
-                CreateConnection(connectionString), isolationLevel, optionsBuilderAction)
-        {
-        }
-
-        public SqliteDbContextTransactionScope(SqliteConnection connection) : this(
-            connection, false, connection.BeginTransaction(), true, null)
-        {
-        }
-
-        public SqliteDbContextTransactionScope(SqliteConnection connection,
-            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(
-                connection, false, connection.BeginTransaction(), true, optionsBuilderAction)
-        {
-        }
-
-        public SqliteDbContextTransactionScope(SqliteConnection connection, IsolationLevel isolationLevel) : this(
-            connection, false, connection.BeginTransaction(isolationLevel), true, null)
-        {
-        }
-
-        public SqliteDbContextTransactionScope(SqliteConnection connection, IsolationLevel isolationLevel,
-            Action<DbContextOptionsBuilder> optionsBuilderAction) : this(
-                connection, false, connection.BeginTransaction(isolationLevel), true, optionsBuilderAction)
-        {
-        }
-
-        protected SqliteDbContextTransactionScope(SqliteConnection connection, bool ownsConnection,
-            SqliteTransaction transaction, bool ownsTransaction,
-            Action<DbContextOptionsBuilder> optionsBuilderAction)
+        public SqliteDbContextTransactionScope([NotNull] SqliteDbContextTransactionScopeOptions options) : base(options)
         {
             if (Transaction.Current != null)
                 throw new InvalidOperationException(Messages.AmbientTransactionsNotSupported);
-            _connection = connection;
-            _ownsConnection = ownsConnection;
-            _transaction = transaction;
-            _ownsTransaction = ownsTransaction;
-            _optionsBuilderAction = optionsBuilderAction;
-        }
+            if (options.Connection == null)
+            {
+                if (options.ConnectionString == null)
+                    throw new InvalidOperationException("Connection string was not provided");
+                _connection = new SqliteConnection(options.ConnectionString);
+                _connection.Open();
+                _ownsConnection = true;
+            }
+            else
+            {
+                _connection = options.Connection;
+            }
 
-        private static SqliteConnection CreateConnection(string connectionString)
-        {
-            var connection = new SqliteConnection(connectionString);
-            connection.Open();
-            return connection;
+            if (options.Transaction == null)
+            {
+                _transaction = _connection.BeginTransaction(options.IsolationLevel);
+                _ownsTransaction = true;
+            }
         }
 
         public DbConnection DbConnection => _connection;
         public DbTransaction DbTransaction => _transaction;
 
-        public TContext CreateDbContext<TContext>(Func<DbContextOptions<TContext>, TContext> factory)
-            where TContext : DbContext
+        public override TContext CreateDbContext<TContext>(Func<DbContextOptions<TContext>, TContext> factory)
         {
-            ThrowIfDisposed();
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
-            var context = factory(CreateOptions<TContext>());
-            if (DbTransaction != null)
-                context.Database.UseTransaction(DbTransaction);
+            var context = base.CreateDbContext(factory);
+            if (_transaction != null)
+                context.Database.UseTransaction(_transaction);
             return context;
         }
 
-        public void Commit()
+        public override void Commit()
         {
             ThrowIfDisposed();
             if (!_ownsTransaction)
@@ -106,12 +78,17 @@ namespace EFCore.TransactionExtensions.Sqlite
             _transaction.Commit();
         }
 
-        public void Rollback()
+        public override void Rollback()
         {
             ThrowIfDisposed();
             if (!_ownsTransaction)
                 throw new InvalidOperationException(Messages.RollbackExternalTransaction);
             _transaction.Rollback();
+        }
+
+        protected override void ConfigureOptions<TContext>(DbContextOptionsBuilder<TContext> builder)
+        {
+            builder.UseSqlite(_connection);
         }
 
         public void Dispose()
@@ -120,25 +97,8 @@ namespace EFCore.TransactionExtensions.Sqlite
             GC.SuppressFinalize(this);
         }
 
-        private DbContextOptions<TContext> CreateOptions<TContext>() where TContext : DbContext
+        protected override void Dispose(bool disposing)
         {
-            var builder = new DbContextOptionsBuilder<TContext>();
-            builder.UseSqlite(_connection);
-            _optionsBuilderAction?.Invoke(builder);
-            return builder.Options;
-        }
-
-        protected void ThrowIfDisposed()
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(GetType().FullName);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_disposed)
-                return;
-            _disposed = true;
             if (disposing)
             {
                 if (_ownsTransaction)

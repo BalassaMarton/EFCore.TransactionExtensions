@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
+using EFCore.TransactionExtensions.Infrastructure;
 using EFCore.TransactionExtensions.Tests;
 using EFCore.TransactionExtensions.Tests.Model;
 using Microsoft.Data.Sqlite;
@@ -9,16 +10,17 @@ using Xunit;
 
 namespace EFCore.TransactionExtensions.Sqlite.Tests
 {
-    public class StoreContextFixtureSqlite : StoreContextFixture, IDisposable
+    public class DatabaseFixtureSqlite : DatabaseFixture, IDisposable
     {
-        public StoreContextFixtureSqlite()
+        public DatabaseFixtureSqlite()
         {
             var dbName = "Test-" + Guid.NewGuid().ToString("N");
             _connectionString =
                 $@"Data Source={dbName}";
             _connection = new SqliteConnection(_connectionString);
             _connection.Open();
-            using (var db = CreateStoreContext())
+            // ReSharper disable once VirtualMemberCallInConstructor
+            using (var db = new StoreContext(CreateDbContextOptions<StoreContext>()))
             {
                 db.Database.EnsureCreated();
             }
@@ -37,16 +39,21 @@ namespace EFCore.TransactionExtensions.Sqlite.Tests
         private readonly string _connectionString;
         private readonly SqliteConnection _connection;
 
-        public override IDbContextTransactionScope CreateTransactionScope()
+        public override DbContextOptions<TContext> CreateDbContextOptions<TContext>()
         {
-            return new SqliteDbContextTransactionScope(_connection, IsolationLevel.ReadCommitted);
+            return new DbContextOptionsBuilder<TContext>()
+                .UseSqlite(_connectionString)
+                .Options;
         }
 
-        // Create a DbContext outside of any transaction scope
-        public override StoreContext CreateStoreContext()
+        public override IDbContextTransactionScope CreateTransactionScope(Action<DbContextTransactionScopeOptions> optionsAction = null)
         {
-            return new StoreContext(new DbContextOptionsBuilder<StoreContext>().UseSqlite(_connectionString)
-                    .Options);
+            var options = new SqliteDbContextTransactionScopeOptions
+            {
+                ConnectionString = _connectionString
+            };
+            optionsAction?.Invoke(options);
+            return new SqliteDbContextTransactionScope(options);
         }
     }
 }
