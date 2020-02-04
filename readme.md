@@ -1,5 +1,3 @@
-# !!! WORK IN PROGRESS !!!
-
 # Provider-agnostic transaction sharing with Entity Framework Core
 
 
